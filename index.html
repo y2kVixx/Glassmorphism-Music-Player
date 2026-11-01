@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glass Player</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #fbfbfc;
+            --glass: 20;
+            --blur: 35px;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #101014;
+            color: #fff;
+            font-family: Inter, Arial, sans-serif;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 330px 1fr;
+        }
+
+        .sidebar {
+            background: #17171d;
+            border-right: 1px solid #292930;
+            padding: 28px 24px;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .brand {
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: -0.7px;
+            margin-bottom: 7px;
+        }
+
+        .brand span {
+            color: var(--accent);
+        }
+
+        .subtitle {
+            color: #777782;
+            font-size: 11px;
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            color: #9999a8;
+            margin: 25px 0 13px;
+        }
+
+        .field {
+            margin-bottom: 17px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 11px;
+            color: #b6b6c3;
+            margin-bottom: 8px;
+        }
+
+        .field input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background: #222229;
+            border: 1px solid #33333c;
+            border-radius: 8px;
+            color: white;
+            outline: none;
+            font-size: 12px;
+        }
+
+        .field input:focus {
+            border-color: var(--accent);
+        }
+
+        .field input[type="file"] {
+            width: 100%;
+            color: #999;
+            font-size: 11px;
+        }
+
+        .field input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .range-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #888895;
+            margin-top: 7px;
+        }
+
+        .file-message {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 7px;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .file-message.error {
+            display: block;
+            background: rgba(255, 65, 85, 0.10);
+            border: 1px solid rgba(255, 65, 85, 0.25);
+            color: #ff858f;
+        }
+
+        .file-message.success {
+            display: block;
+            background: rgba(40, 220, 140, 0.08);
+            border: 1px solid rgba(40, 220, 140, 0.2);
+            color: #6ce5ae;
+        }
+
+        .preview-area {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .preview-heading {
+            position: absolute;
+            top: 30px;
+            left: 35px;
+            font-size: 12px;
+            color: #858590;
+            letter-spacing: 1px;
+        }
+
+        .preview-heading span {
+            color: white;
+            font-weight: 700;
+        }
+
+        .player-wrapper {
+            width: 300px;
+            height: 540px;
+            position: relative;
+            isolation: isolate;
+            border-radius: 32px;
+        }
+
+        .player-background {
+            position: absolute;
+            inset: -80px;
+            z-index: -2;
+            background-image: url("");
+            background-position: center;
+            background-size: cover;
+            filter: blur(var(--blur)) brightness(0.55);
+            opacity: 0.8;
+            transition: background-image 0.2s;
+        }
+
+        .player {
+            width: 100%;
+            height: 100%;
+            padding: 23px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 32px;
+            background: rgba(255, 255, 255, calc(var(--glass) / 100));
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            box-shadow: 0 20px 70px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+        }
+
+        .cover {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .music-info {
+            margin-top: 23px;
+        }
+
+        .music-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .music-artist {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.65);
+            margin-top: 6px;
+        }
+
+        .progress-area {
+            margin-top: 24px;
+        }
+
+        .progress {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
+        }
+
+        .progress-fill {
+            width: 38%;
+            height: 100%;
+            background: white;
+            border-radius: 10px;
+        }
+
+        .times {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.65);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 21px;
+            color: white;
+        }
+
+        .control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            color: white;
+            background: transparent;
+            border: none;
+            padding: 0;
+            cursor: default;
+        }
+
+        .control svg {
+            width: 25px;
+            height: 25px;
+            fill: currentColor;
+            display: block;
+        }
+
+        .control.play svg {
+            width: 30px;
+            height: 30px;
+        }
+
+        .control.favorite {
+            font-size: 29px;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .volume {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 25px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .volume-track {
+            height: 4px;
+            flex: 1;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .volume-fill {
+            width: 80%;
+            height: 100%;
+            border-radius: 10px;
+            background: white;
+        }
+
+        .accent-dot {
+            width: 7px;
+            height: 7px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        .download-area {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        .download-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            padding: 13px 25px;
+            border: none;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #101014;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+            z-index: 11;
+            pointer-events: auto;
+        }
+
+        .download-button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.12);
+        }
+
+        .download-button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+            transform: none;
+        }
+
+        .download-button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        @media(max-width: 750px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                height: auto;
+                max-height: none;
+                border-right: none;
+                border-bottom: 1px solid #292930;
+            }
+
+            .preview-area {
+                min-height: 700px;
+                padding: 70px 20px;
+            }
+
+            .preview-heading {
+                top: 25px;
+                left: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app">
+
+        <aside class="sidebar">
+
+            <div class="brand">Glassmorphism Music</div>
+            <div class="subtitle">By ASKAZzz</div>
+
+            <div class="section-title">01 — MUSIC INFORMATION</div>
+
+            <div class="field">
+                <label>SONG TITLE</label>
+                <input type="text" id="titleInput" value="Edit Here">
+            </div>
+
+            <div class="field">
+                <label>ARTIST</label>
+                <input type="text" id="artistInput" value="Unknown Artist">
+            </div>
+
+            <div class="field">
+                <label>ALBUM COVER</label>
+                <input type="file" id="imageInput"
+                    accept=".png,.jpg,.jpeg,.jfif,.webp,.bmp,.avif,image/png,image/jpeg,image/webp,image/bmp,image/avif">
+
+                <div class="file-message" id="fileMessage"></div>
+            </div>
+
+            <div class="section-title">02 — APPEARANCE</div>
+
+            <div class="field">
+                <label>GLASS TRANSPARENCY</label>
+                <input type="range" id="glassInput" min="5" max="45" value="20">
+                <div class="range-info">
+                    <span>Transparent</span>
+                    <span>Opaque</span>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>BACKGROUND BLUR</label>
+                <input type="range" id="blurInput" min="0" max="60" value="35">
+                <div class="range-info">
+                    <span>0px</span>
+                    <span id="blurValue">35px</span>
+                </div>
+            </div>
+
+            <div class="section-title">03 — PLAYER DETAILS</div>
+
+            <div class="field">
+                <label>SHOW VOLUME</label>
+                <input type="checkbox" id="volumeInput" checked>
+            </div>
+
+        </aside>
+
+        <main class="preview-area">
+
+            <div class="player-wrapper" id="playerWrapper">
+
+                <div class="player-background" id="background"></div>
+
+                <div class="player">
+
+                    <img class="cover" id="cover" src="" alt="Album cover">
+
+                    <div class="music-info">
+                        <div class="music-title" id="musicTitle">
+                            None
+                        </div>
+
+                        <div class="music-artist" id="musicArtist">
+                            Unknown Artist
+                        </div>
+                    </div>
+
+                    <div class="progress-area">
+                        <div class="progress">
+                            <div class="progress-fill"></div>
+                        </div>
+
+                        <div class="times">
+                            <span>1:24</span>
+                            <span>3:45</span>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+
+                        <div class="control favorite">☆</div>
+
+                        <button class="control" type="button" aria-label="Música anterior">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="2" y="4" width="3" height="16" rx="1" />
+                                <path d="M21 4L7 12L21 20V4Z" />
+                            </svg>
+                        </button>
+
+                        <button class="control play" type="button" aria-label="Pause">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="5" y="3" width="5" height="18" rx="1.5" />
+                                <rect x="14" y="3" width="5" height="18" rx="1.5" />
+                            </svg>
+                        </button>
+
+                        <button class="control" type="button" aria-label="Próxima música">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="19" y="4" width="3" height="16" rx="1" />
+                                <path d="M3 4L17 12L3 20V4Z" />
+                            </svg>
+                        </button>
+
+                    </div>
+
+                    <div class="volume" id="volume">
+                        <span>🕪</span>
+                        <div class="volume-track">
+                            <div class="volume-fill"></div>
+                        </div>
+                        <span>𝜗ৎ</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="download-area">
+
+                <button class="download-button" id="downloadButton" type="button">
+
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <path d="M7 10l5 5 5-5" />
+                        <path d="M12 15V3" />
+
+                    </svg>
+
+                    DOWNLOAD PNG
+
+                </button>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+
+        const titleInput = document.getElementById("titleInput");
+        const artistInput = document.getElementById("artistInput");
+        const imageInput = document.getElementById("imageInput");
+        const glassInput = document.getElementById("glassInput");
+        const blurInput = document.getElementById("blurInput");
+
+        const cover = document.getElementById("cover");
+        const background = document.getElementById("background");
+
+        const fileMessage = document.getElementById("fileMessage");
+
+        let currentImageURL = null;
+
+        titleInput.addEventListener("input", () => {
+            document.getElementById("musicTitle").textContent =
+                titleInput.value || "Untitled";
+        });
+
+        artistInput.addEventListener("input", () => {
+            document.getElementById("musicArtist").textContent =
+                artistInput.value || "Unknown Artist";
+        });
+
+        function showFileMessage(message, type) {
+            fileMessage.textContent = message;
+            fileMessage.className = "file-message " + type;
+        }
+
+        function readText(bytes, start, length) {
+            return String.fromCharCode(...bytes.slice(start, start + length));
+        }
+
+        async function isAnimatedImage(file) {
+
+            const extension = file.name.split(".").pop().toLowerCase();
+
+            if (extension === "gif" || file.type === "image/gif") {
+                return true;
+            }
+
+            const buffer = await file.slice(0, 1024 * 1024).arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+
+            if (extension === "png") {
+                for (let i = 0; i < bytes.length - 4; i++) {
+                    if (readText(bytes, i, 4) === "acTL") {
+                        return true;
+                    }
+                }
+            }
+
+            if (extension === "webp") {
+                for (let i = 0; i < bytes.length - 4; i++) {
+                    const chunk = readText(bytes, i, 4);
+
+                    if (chunk === "ANIM" || chunk === "ANMF") {
+                        return true;
+                    }
+                }
+            }
+
+            if (extension === "avif") {
+                for (let i = 0; i < bytes.length - 4; i++) {
+                    if (readText(bytes, i, 4) === "avis") {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        imageInput.addEventListener("change", async () => {
+
+            const file = imageInput.files[0];
+
+            if (!file) return;
+
+            const extension = file.name.split(".").pop().toLowerCase();
+
+            const allowedExtensions = [
+                "png", "jpg", "jpeg", "jfif",
+                "webp", "bmp", "avif"
+            ];
+
+            if (!allowedExtensions.includes(extension)) {
+
+                showFileMessage(
+                    "Formato não permitido! Utilize apenas imagens estáticas: PNG, JPG, JPEG, JFIF, WebP, BMP ou AVIF. GIF e outros formatos animados não são aceitos.",
+                    "error"
+                );
+
+                imageInput.value = "";
+                return;
+            }
+
+            if (file.type && !file.type.startsWith("image/")) {
+
+                showFileMessage(
+                    "O arquivo selecionado não é uma imagem válida.",
+                    "error"
+                );
+
+                imageInput.value = "";
+                return;
+            }
+
+            try {
+
+                const animated = await isAnimatedImage(file);
+
+                if (animated) {
+
+                    showFileMessage(
+                        "Não é possível adicionar imagens animadas! GIF, APNG, WebP animado e AVIF animado não são permitidos. Escolha uma imagem estática.",
+                        "error"
+                    );
+
+                    imageInput.value = "";
+                    return;
+                }
+
+                const imageURL = URL.createObjectURL(file);
+                const testImage = new Image();
+
+                testImage.onload = () => {
+
+                    if (currentImageURL) {
+                        URL.revokeObjectURL(currentImageURL);
+                    }
+
+                    currentImageURL = imageURL;
+
+                    cover.src = imageURL;
+                    background.style.backgroundImage = `url("${imageURL}")`;
+
+                    showFileMessage(
+                        "Imagem adicionada com sucesso!",
+                        "success"
+                    );
+                };
+
+                testImage.onerror = () => {
+
+                    URL.revokeObjectURL(imageURL);
+
+                    showFileMessage(
+                        "Não foi possível carregar essa imagem. Tente outro arquivo.",
+                        "error"
+                    );
+
+                    imageInput.value = "";
+                };
+
+                testImage.src = imageURL;
+
+            } catch (error) {
+
+                showFileMessage(
+                    "Não foi possível verificar esse arquivo. Tente outra imagem.",
+                    "error"
+                );
+
+                imageInput.value = "";
+            }
+
+        });
+
+        glassInput.addEventListener("input", () => {
+
+            document.documentElement.style.setProperty(
+                "--glass",
+                glassInput.value
+            );
+
+        });
+
+        blurInput.addEventListener("input", () => {
+
+            document.documentElement.style.setProperty(
+                "--blur",
+                blurInput.value + "px"
+            );
+
+            document.getElementById("blurValue").textContent =
+                blurInput.value + "px";
+
+        });
+
+        document.getElementById("volumeInput").addEventListener("change", e => {
+
+            document.getElementById("volume").style.display =
+                e.target.checked ? "flex" : "none";
+
+        });
+
+        const downloadButton = document.getElementById("downloadButton");
+
+        downloadButton.addEventListener("click", () => {
+
+            const originalText = downloadButton.innerHTML;
+
+            downloadButton.disabled = true;
+            downloadButton.textContent = "GENERATING PNG...";
+
+            try {
+
+                const W = 1080;
+                const H = 1920;
+
+                const PLAYER_W = 900;
+                const PLAYER_H = 1500;
+
+                const scale = 0.78;
+
+                const offsetX = (W - PLAYER_W * scale) / 2;
+                const offsetY = (H - PLAYER_H * scale) / 2;
+
+                const canvas = document.createElement("canvas");
+                canvas.width = W;
+                canvas.height = H;
+
+                const ctx = canvas.getContext("2d");
+
+                if (!ctx) {
+                    throw new Error("Não foi possível criar o canvas.");
+                }
+
+                const img = cover;
+                const hasImage = img.complete && img.naturalWidth > 0;
+
+                const glass = Number(glassInput.value) / 100;
+                const blur = Number(blurInput.value);
+
+                function roundedRect(x, y, w, h, r) {
+                    ctx.beginPath();
+                    ctx.roundRect(x, y, w, h, r);
+                }
+
+                function drawImageCover(image, x, y, w, h) {
+
+                    const ratio = Math.max(
+                        w / image.naturalWidth,
+                        h / image.naturalHeight
+                    );
+
+                    const sw = w / ratio;
+                    const sh = h / ratio;
+
+                    const sx = (image.naturalWidth - sw) / 2;
+                    const sy = (image.naturalHeight - sh) / 2;
+
+                    ctx.drawImage(
+                        image,
+                        sx, sy, sw, sh,
+                        x, y, w, h
+                    );
+                }
+
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(0, 0, W, H);
+
+                if (hasImage) {
+
+                    ctx.save();
+
+                    ctx.filter = `blur(${blur * 3}px) brightness(0.55)`;
+
+                    drawImageCover(
+                        img,
+                        -100,
+                        -100,
+                        W + 200,
+                        H + 200
+                    );
+
+                    ctx.restore();
+                }
+
+                ctx.fillStyle = "rgba(0,0,0,0.20)";
+                ctx.fillRect(0, 0, W, H);
+
+                ctx.save();
+
+                ctx.translate(offsetX, offsetY);
+                ctx.scale(scale, scale);
+
+                roundedRect(0, 0, PLAYER_W, PLAYER_H, 96);
+
+                ctx.fillStyle = `rgba(255,255,255,${glass})`;
+                ctx.fill();
+
+                ctx.strokeStyle = "rgba(255,255,255,0.28)";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                if (hasImage) {
+
+                    ctx.save();
+
+                    roundedRect(69, 69, 762, 750, 36);
+                    ctx.clip();
+
+                    drawImageCover(img, 69, 69, 762, 750);
+
+                    ctx.restore();
+                }
+
+                ctx.textAlign = "left";
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 42px Arial";
+
+                ctx.fillText(
+                    titleInput.value || "Untitled",
+                    69,
+                    888,
+                    762
+                );
+
+                ctx.fillStyle = "rgba(255,255,255,0.65)";
+                ctx.font = "33px Arial";
+
+                ctx.fillText(
+                    artistInput.value || "Unknown Artist",
+                    69,
+                    927,
+                    762
+                );
+
+                roundedRect(69, 1005, 762, 12, 6);
+
+                ctx.fillStyle = "rgba(255,255,255,0.25)";
+                ctx.fill();
+
+                roundedRect(69, 1005, 290, 12, 6);
+
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+
+                ctx.font = "27px Arial";
+                ctx.fillStyle = "rgba(255,255,255,0.65)";
+
+                ctx.textAlign = "left";
+                ctx.fillText("1:24", 69, 1050);
+
+                ctx.textAlign = "right";
+                ctx.fillText("3:45", 831, 1050);
+
+                ctx.fillStyle = "#ffffff";
+                ctx.textAlign = "center";
+
+                ctx.font = "76px Arial";
+                ctx.fillText("☆", 95, 1195);
+
+                ctx.save();
+                ctx.translate(310, 1160);
+
+                ctx.fillRect(0, 0, 9, 65);
+
+                ctx.beginPath();
+                ctx.moveTo(95, 0);
+                ctx.lineTo(35, 32);
+                ctx.lineTo(95, 65);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+
+                roundedRect(430, 1158, 18, 68, 7);
+                ctx.fill();
+
+                roundedRect(470, 1158, 18, 68, 7);
+                ctx.fill();
+
+                ctx.save();
+                ctx.translate(580, 1160);
+
+                ctx.fillRect(90, 0, 9, 65);
+
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(60, 32);
+                ctx.lineTo(0, 65);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+
+                if (document.getElementById("volumeInput").checked) {
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "35px Arial";
+                    ctx.textAlign = "left";
+
+                    ctx.fillText("◂", 69, 1305);
+
+                    roundedRect(125, 1287, 650, 12, 6);
+
+                    ctx.fillStyle = "rgba(255,255,255,0.35)";
+                    ctx.fill();
+
+                    roundedRect(125, 1287, 520, 12, 6);
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fill();
+
+                    ctx.textAlign = "right";
+                    ctx.fillText("◖))", 831, 1305);
+                }
+
+                ctx.restore();
+
+                const dataURL = canvas.toDataURL("image/png");
+
+                if (!dataURL || dataURL === "data:,") {
+                    throw new Error("O navegador não conseguiu gerar a imagem.");
+                }
+
+                const filename = (titleInput.value || "glass-player")
+                    .trim()
+                    .replace(/[<>:"/\\|?*]/g, "-")
+                    .replace(/\s+/g, "-");
+
+                const link = document.createElement("a");
+
+                link.href = dataURL;
+                link.download = filename + ".png";
+                link.style.display = "none";
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                downloadButton.textContent = "PNG GERADO!";
+
+            } catch (error) {
+
+                console.error("Erro na exportação:", error);
+                alert("Erro ao gerar o PNG: " + error.message);
+
+            } finally {
+
+                downloadButton.disabled = false;
+
+                setTimeout(() => {
+                    downloadButton.innerHTML = originalText;
+                }, 1500);
+            }
+
+        });
+
+    </script>
+
+</body>
+
+</html>
